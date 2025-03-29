@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
 const path = require('path');
-const fs = require('fs');
+const fetch = require('node-fetch');
 const pdfParse = require('pdf-parse');
 
 const app = express();
@@ -13,6 +13,9 @@ const port = process.env.PORT || 3000;
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
+
+// OneDrive PDF URL
+const PDF_URL = 'https://1drv.ms/b/c/ca3f2f85b90b0fd3/EXT4HIscVZBJjrvqjXKP-HEBbCe51qH0ZBQ6h9Up9M0WzA?e=M7tWzm';
 
 // Middleware
 app.use(cors({
@@ -36,15 +39,20 @@ Key provisions include:
 
 The Act applies to all children under 18 years of age in Nigeria.`;
 
-// Function to read PDF content
-async function readPDFContent(filePath) {
+// Function to fetch PDF content from OneDrive
+async function fetchPDFContent() {
     try {
-        console.log(`Attempting to read PDF from: ${filePath}`);
-        const dataBuffer = fs.readFileSync(filePath);
-        const data = await pdfParse(dataBuffer);
+        console.log('Fetching PDF from OneDrive...');
+        const response = await fetch(PDF_URL);
+        if (!response.ok) {
+            throw new Error(`Failed to fetch PDF: ${response.statusText}`);
+        }
+        const buffer = await response.buffer();
+        const data = await pdfParse(buffer);
+        console.log('PDF fetched and parsed successfully');
         return data.text;
     } catch (error) {
-        console.log(`PDF file not found at: ${filePath}`);
+        console.error('Error fetching PDF:', error);
         return fallbackContent;
     }
 }
@@ -74,12 +82,10 @@ function chunkText(text, maxChunkSize = 8000) {
 // Function to load legal documents
 async function loadLegalDocuments() {
     try {
-        const pdfPath = path.join(__dirname, "childs_right_act.pdf");
-        console.log(`Attempting to read PDF from: ${pdfPath}`);
-        const content = await readPDFContent(pdfPath);
+        const content = await fetchPDFContent();
         // Split content into chunks
         const chunks = chunkText(content);
-        console.log(`Split PDF into ${chunks.length} chunks`);
+        console.log(`Split content into ${chunks.length} chunks`);
         return chunks;
     } catch (error) {
         console.error('Error loading legal documents:', error);
@@ -193,10 +199,30 @@ app.post('/api/chat', async (req, res) => {
         if (!message) {
             return res.status(400).json({ error: 'Message is required' });
         }
+
+        // Check if OpenAI API key is available
+        if (!process.env.OPENAI_API_KEY) {
+            console.error('OpenAI API key is not set');
+            return res.status(500).json({ 
+                error: 'OpenAI API key is not configured',
+                details: 'Please check your environment variables'
+            });
+        }
+
+        console.log('Processing chat request...');
         const response = await performRAG(message);
+        console.log('Chat request processed successfully');
         res.json({ response });
     } catch (error) {
         console.error('Error processing chat request:', error);
+        // Check if it's an OpenAI API error
+        if (error.response) {
+            console.error('OpenAI API Error:', error.response.data);
+            return res.status(500).json({ 
+                error: 'OpenAI API Error',
+                details: error.response.data.error?.message || 'Unknown API error'
+            });
+        }
         res.status(500).json({ 
             error: 'Failed to process request',
             details: process.env.NODE_ENV === 'development' ? error.message : undefined
