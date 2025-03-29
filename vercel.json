@@ -10,20 +10,14 @@
       "use": "@vercel/static"
     }
   ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/$1"
-    }
-  ],
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/"
+      "source": "/api/:path*",
+      "destination": "/server.js"
     }
-  ]
+  ],
+  "env": {
+    "OPENAI_API_KEY": "@openai-api-key",
+    "PORT": "3001"
+  }
 } 
