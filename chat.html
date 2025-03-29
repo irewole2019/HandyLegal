@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HandyLegal Chat - Your Legal Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-gray-50">
+    <!-- Navigation -->
+    <nav class="bg-green-700 text-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <a href="index.html" class="text-2xl font-bold">HandyLegal</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Chat Interface -->
+    <div class="max-w-4xl mx-auto mt-8 px-4">
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <!-- Chat Header -->
+            <div class="bg-green-700 text-white px-6 py-4">
+                <h1 class="text-xl font-semibold">Legal Assistant</h1>
+                <p class="text-sm text-green-100">Ask me anything about the rights of Nigerian children</p>
+            </div>
+
+            <!-- Chat Messages -->
+            <div id="chat-messages" class="h-[600px] overflow-y-auto p-6 space-y-4">
+                <!-- Welcome Message -->
+                <div class="flex items-start space-x-3">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                            <i class="fas fa-robot text-green-600"></i>
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <div class="bg-gray-100 rounded-lg px-4 py-2">
+                            <p class="text-gray-800">Hello! I'm your HandyLegal assistant. I can help you understand the laws regarding the Nigerian Child's Right Act. What would you like to know?</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="border-t p-4">
+                <form id="chat-form" class="flex space-x-4">
+                    <input type="text" 
+                           id="user-input" 
+                           class="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+                           placeholder="Type your question here..."
+                           required>
+                    <button type="submit" 
+                            class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('chat-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const userInput = document.getElementById('user-input');
+            const message = userInput.value.trim();
+            
+            if (!message) return;
+
+            // Add user message to chat
+            addMessage(message, 'user');
+            userInput.value = '';
+
+            try {
+                // Show loading state
+                const loadingMessage = addMessage('Thinking...', 'bot', true);
+
+                // TODO: Replace with actual API endpoint
+                const response = await fetch('http://localhost:3001/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ message }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to get response');
+                }
+
+                const data = await response.json();
+                
+                // Remove loading message and add actual response
+                loadingMessage.remove();
+                addMessage(data.response, 'bot');
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, I encountered an error. Please try again.', 'bot');
+            }
+        });
+
+        function addMessage(text, sender, isTemporary = false) {
+            const messagesContainer = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex items-start space-x-3 ${isTemporary ? 'opacity-50' : ''}`;
+            
+            const icon = sender === 'user' ? 'user' : 'robot';
+            const bgColor = sender === 'user' ? 'bg-blue-100' : 'bg-gray-100';
+            const iconColor = sender === 'user' ? 'text-blue-600' : 'text-green-600';
+            
+            messageDiv.innerHTML = `
+                <div class="flex-shrink-0">
+                    <div class="w-8 h-8 rounded-full ${bgColor} flex items-center justify-center">
+                        <i class="fas fa-${icon} ${iconColor}"></i>
+                    </div>
+                </div>
+                <div class="flex-1">
+                    <div class="${bgColor} rounded-lg px-4 py-2">
+                        <p class="text-gray-800">${text}</p>
+                    </div>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            return messageDiv;
+        }
+    </script>
+</body>
+</html> 
