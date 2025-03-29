@@ -16,12 +16,6 @@
       "destination": "/server.js"
     }
   ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "destination": "/"
-    }
-  ],
   "env": {
     "OPENAI_API_KEY": "@openai_api_key",
     "PORT": "3001"
