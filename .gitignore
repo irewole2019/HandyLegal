@@ -17,6 +17,8 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 
-# PDF files (since they might be large and not needed in the repo)
-*.pdf 
+# PDF files (except our legal document)
+*.pdf
+!.env.example
+!childs_right_act.pdf
 .vercel

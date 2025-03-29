@@ -52,7 +52,7 @@ async function readPDFContent(filePath) {
 // Function to load legal documents
 async function loadLegalDocuments() {
     try {
-        const pdfPath = path.join(__dirname, "CHILD'S RIGHT ACT.pdf");
+        const pdfPath = path.join(__dirname, "childs_right_act.pdf");
         const content = await readPDFContent(pdfPath);
         return [content];
     } catch (error) {
