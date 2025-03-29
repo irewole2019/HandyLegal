@@ -50,17 +50,19 @@ async function readPDFContent(filePath) {
 }
 
 // Function to chunk text into smaller pieces
-function chunkText(text, maxChunkSize = 4000) {
-    const sentences = text.split(/[.!?]+/);
+function chunkText(text, maxChunkSize = 8000) {
+    const paragraphs = text.split(/\n\s*\n/);
     const chunks = [];
     let currentChunk = '';
 
-    for (const sentence of sentences) {
-        if ((currentChunk + sentence).length > maxChunkSize) {
-            chunks.push(currentChunk.trim());
-            currentChunk = sentence;
+    for (const paragraph of paragraphs) {
+        if ((currentChunk + paragraph).length > maxChunkSize) {
+            if (currentChunk) {
+                chunks.push(currentChunk.trim());
+            }
+            currentChunk = paragraph;
         } else {
-            currentChunk += sentence + '. ';
+            currentChunk += (currentChunk ? '\n\n' : '') + paragraph;
         }
     }
     if (currentChunk) {
@@ -85,11 +87,33 @@ async function loadLegalDocuments() {
     }
 }
 
-// Initialize legal documents
+// Initialize legal documents and their embeddings
 let legalDocuments = [];
-loadLegalDocuments().then(docs => {
+let documentEmbeddings = [];
+
+// Function to create embeddings for documents
+async function createDocumentEmbeddings(documents) {
+    return await Promise.all(
+        documents.map(async (doc) => {
+            const embedding = await openai.embeddings.create({
+                model: "text-embedding-3-small",
+                input: doc
+            });
+            return {
+                content: doc,
+                embedding: embedding.data[0].embedding
+            };
+        })
+    );
+}
+
+// Initialize legal documents and create embeddings
+loadLegalDocuments().then(async docs => {
     legalDocuments = docs;
     console.log('Legal documents loaded successfully');
+    // Create embeddings for all documents
+    documentEmbeddings = await createDocumentEmbeddings(docs);
+    console.log('Document embeddings created successfully');
 }).catch(error => {
     console.error('Error initializing legal documents:', error);
     legalDocuments = [fallbackContent];
@@ -98,27 +122,13 @@ loadLegalDocuments().then(docs => {
 // Function to perform RAG
 async function performRAG(query) {
     try {
-        // Create embeddings for the query
+        // Create embedding for the query
         const queryEmbedding = await openai.embeddings.create({
             model: "text-embedding-3-small",
             input: query
         });
 
-        // Create embeddings for legal documents
-        const documentEmbeddings = await Promise.all(
-            legalDocuments.map(async (doc) => {
-                const embedding = await openai.embeddings.create({
-                    model: "text-embedding-3-small",
-                    input: doc
-                });
-                return {
-                    content: doc,
-                    embedding: embedding.data[0].embedding
-                };
-            })
-        );
-
-        // Calculate cosine similarity
+        // Calculate cosine similarity using cached embeddings
         const similarities = documentEmbeddings.map((doc) => {
             const similarity = cosineSimilarity(
                 queryEmbedding.data[0].embedding,
@@ -131,14 +141,23 @@ async function performRAG(query) {
         similarities.sort((a, b) => b.similarity - a.similarity);
         const relevantDocs = similarities.slice(0, 3).map(doc => doc.content);
 
-        // Create the prompt for GPT-4
+        // Create the prompt for GPT-4 with formatting instructions
         const prompt = `You are a legal assistant specializing in Nigerian Child's Rights Act. 
         Based on the following legal documents, please answer the question: "${query}"
         
         Relevant legal documents:
         ${relevantDocs.join('\n\n')}
         
-        Please provide a clear, concise, and accurate response based on the legal documents provided.`;
+        Please provide a clear, concise, and accurate response based on the legal documents provided.
+        Format your response as follows:
+        
+        1. Start with a brief, direct answer to the question
+        2. Then provide relevant details in bullet points or numbered lists
+        3. Include specific references to the Child's Rights Act where applicable
+        4. Use clear headings and sections to organize the information
+        5. End with any important notes or warnings if relevant
+        
+        Keep the response concise but comprehensive. Use proper spacing and formatting to make it easy to read.`;
 
         // Get response from GPT-4
         const completion = await openai.chat.completions.create({
@@ -148,7 +167,11 @@ async function performRAG(query) {
             max_tokens: 500
         });
 
-        return completion.choices[0].message.content;
+        // Add disclaimer to the response
+        const response = completion.choices[0].message.content;
+        const disclaimer = "\n\n---\n\n**Disclaimer:** This information is AI-generated and may not be accurate or complete. We are not lawyers, and this should not be considered legal advice. For accurate legal guidance, please consult with a qualified legal professional.";
+        
+        return response + disclaimer;
     } catch (error) {
         console.error('Error in RAG:', error);
         throw error;
