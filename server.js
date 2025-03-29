@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
 const path = require('path');
-const { fetch } = require('undici');
+const https = require('https');
 const pdfParse = require('pdf-parse');
 
 const app = express();
@@ -15,8 +15,8 @@ const openai = new OpenAI({
     dangerouslyAllowBrowser: true
 });
 
-// OneDrive PDF URL
-const PDF_URL = 'https://1drv.ms/b/c/ca3f2f85b90b0fd3/EXT4HIscVZBJjrvqjXKP-HEBbCe51qH0ZBQ6h9Up9M0WzA?e=M7tWzm';
+// GitHub raw PDF URL - we'll update this once you push the PDF to GitHub
+const PDF_URL = 'https://raw.githubusercontent.com/irewole2019/HandyLegal/main/childs_right_act.pdf';
 
 // Middleware
 app.use(cors({
@@ -40,20 +40,37 @@ Key provisions include:
 
 The Act applies to all children under 18 years of age in Nigeria.`;
 
-// Function to fetch PDF content from OneDrive
+// Function to fetch PDF content from GitHub
 async function fetchPDFContent() {
     try {
-        console.log('Fetching PDF from OneDrive...');
-        const response = await fetch(PDF_URL);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch PDF: ${response.statusText}`);
-        }
-        const buffer = await response.buffer();
-        const data = await pdfParse(buffer);
-        console.log('PDF fetched and parsed successfully');
-        return data.text;
+        console.log('Fetching PDF from GitHub...');
+        return new Promise((resolve, reject) => {
+            https.get(PDF_URL, (response) => {
+                if (response.statusCode !== 200) {
+                    console.error(`Failed to fetch PDF: ${response.statusCode}`);
+                    return resolve(fallbackContent);
+                }
+
+                const chunks = [];
+                response.on('data', (chunk) => chunks.push(chunk));
+                response.on('end', async () => {
+                    try {
+                        const buffer = Buffer.concat(chunks);
+                        const data = await pdfParse(buffer);
+                        console.log('PDF fetched and parsed successfully');
+                        resolve(data.text);
+                    } catch (error) {
+                        console.error('Error parsing PDF:', error);
+                        resolve(fallbackContent);
+                    }
+                });
+            }).on('error', (error) => {
+                console.error('Error fetching PDF:', error);
+                resolve(fallbackContent);
+            });
+        });
     } catch (error) {
-        console.error('Error fetching PDF:', error);
+        console.error('Error in fetchPDFContent:', error);
         return fallbackContent;
     }
 }
