@@ -28,13 +28,17 @@ cd handylegal-landing
 npm install
 ```
 
-3. Create a `.env` file in the root directory and add your OpenAI API key:
-```
-OPENAI_API_KEY=your_openai_api_key_here
-PORT=3000
-```
+3. Set up environment variables:
+   - Copy `.env.example` to `.env`
+   - Add your OpenAI API key to the `.env` file:
+   ```
+   OPENAI_API_KEY=your_openai_api_key_here
+   PORT=3001
+   ```
 
-4. Add your legal documents to the `legalDocuments` array in `server.js`
+4. Add your legal documents:
+   - Place your PDF files in the root directory
+   - Update the `legalDocuments` array in `server.js` with your document paths
 
 ## Running the Application
 
@@ -45,7 +49,7 @@ npm run dev
 
 2. Open your browser and navigate to:
 ```
-http://localhost:3000
+http://localhost:3001
 ```
 
 ## Usage

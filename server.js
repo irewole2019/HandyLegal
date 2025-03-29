@@ -15,7 +15,11 @@ const openai = new OpenAI({
 });
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: '*', // Allow requests from any origin
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type']
+}));
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
 
@@ -284,15 +288,35 @@ function cosineSimilarity(vecA, vecB) {
 app.post('/api/chat', async (req, res) => {
     try {
         const { message } = req.body;
+        if (!message) {
+            return res.status(400).json({ error: 'Message is required' });
+        }
         const response = await performRAG(message);
         res.json({ response });
     } catch (error) {
         console.error('Error processing chat request:', error);
-        res.status(500).json({ error: 'Failed to process request' });
+        res.status(500).json({ 
+            error: 'Failed to process request',
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
 });
 
-// Start server
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}`);
-}); 
+// Error handling middleware
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).json({ 
+        error: 'Something went wrong!',
+        details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
+// Update the server startup
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(port, () => {
+        console.log(`Server running at http://localhost:${port}`);
+    });
+} else {
+    // For Vercel deployment
+    module.exports = app;
+} 
