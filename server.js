@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const OpenAI = require('openai');
 const path = require('path');
-const fetch = require('node-fetch');
+const { fetch } = require('undici');
 const pdfParse = require('pdf-parse');
 
 const app = express();
@@ -11,7 +11,8 @@ const port = process.env.PORT || 3000;
 
 // Initialize OpenAI client
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+    apiKey: process.env.OPENAI_API_KEY,
+    dangerouslyAllowBrowser: true
 });
 
 // OneDrive PDF URL
