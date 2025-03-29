@@ -311,13 +311,5 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Update the server startup
-if (process.env.NODE_ENV !== 'production') {
-    app.listen(port, '0.0.0.0', () => {
-        console.log(`Server running at http://localhost:${port}`);
-        console.log(`Access from other devices on your network using your computer's IP address`);
-    });
-} else {
-    // For Vercel deployment
-    module.exports = app;
-} 
+// For Vercel deployment
+module.exports = app; 
