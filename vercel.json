@@ -2,22 +2,12 @@
   "version": 2,
   "builds": [
     {
-      "src": "server.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "childs_right_act.pdf",
-      "use": "@vercel/static"
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/server.js"
+      "src": "package.json",
+      "use": "@vercel/next"
     }
   ],
   "env": {
-    "OPENAI_API_KEY": "@openai_api_key",
-    "PORT": "3001"
+    "OPENAI_API_KEY": "OPENAI_API_KEY",
+    "NEXT_PUBLIC_APP_URL": "https://handylegal-landing.vercel.app"
   }
 } 
