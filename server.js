@@ -49,12 +49,36 @@ async function readPDFContent(filePath) {
     }
 }
 
+// Function to chunk text into smaller pieces
+function chunkText(text, maxChunkSize = 4000) {
+    const sentences = text.split(/[.!?]+/);
+    const chunks = [];
+    let currentChunk = '';
+
+    for (const sentence of sentences) {
+        if ((currentChunk + sentence).length > maxChunkSize) {
+            chunks.push(currentChunk.trim());
+            currentChunk = sentence;
+        } else {
+            currentChunk += sentence + '. ';
+        }
+    }
+    if (currentChunk) {
+        chunks.push(currentChunk.trim());
+    }
+    return chunks;
+}
+
 // Function to load legal documents
 async function loadLegalDocuments() {
     try {
         const pdfPath = path.join(__dirname, "childs_right_act.pdf");
+        console.log(`Attempting to read PDF from: ${pdfPath}`);
         const content = await readPDFContent(pdfPath);
-        return [content];
+        // Split content into chunks
+        const chunks = chunkText(content);
+        console.log(`Split PDF into ${chunks.length} chunks`);
+        return chunks;
     } catch (error) {
         console.error('Error loading legal documents:', error);
         return [fallbackContent];
@@ -167,4 +191,11 @@ app.use((err, req, res, next) => {
 });
 
 // For Vercel deployment
-module.exports = app; 
+module.exports = app;
+
+// Start the server if not in Vercel environment
+if (process.env.NODE_ENV !== 'production') {
+    app.listen(port, () => {
+        console.log(`Server running at http://localhost:${port}`);
+    });
+}
