@@ -151,26 +151,69 @@ async function createDocumentEmbeddings(documents) {
 
 // Initialize legal documents and create embeddings
 loadLegalDocuments().then(async docs => {
-    legalDocuments = docs;
-    console.log('Legal documents loaded successfully');
-    // Create embeddings for all documents
-    documentEmbeddings = await createDocumentEmbeddings(docs);
-    console.log('Document embeddings created successfully');
+    try {
+        legalDocuments = docs;
+        console.log('Legal documents loaded successfully');
+        
+        // Create embeddings for all documents
+        try {
+            documentEmbeddings = await createDocumentEmbeddings(docs);
+            console.log('Document embeddings created successfully');
+        } catch (embeddingError) {
+            console.error('Error creating document embeddings:', embeddingError);
+            // Create fallback embeddings for simple matching
+            documentEmbeddings = docs.map(doc => ({
+                content: doc,
+                embedding: Array(1536).fill(0) // Default embedding size
+            }));
+            console.log('Using fallback embeddings due to error');
+        }
+    } catch (error) {
+        console.error('Error in document loading process:', error);
+        legalDocuments = [fallbackContent];
+        // Create fallback embedding
+        documentEmbeddings = [{
+            content: fallbackContent,
+            embedding: Array(1536).fill(0)
+        }];
+    }
 }).catch(error => {
     console.error('Error initializing legal documents:', error);
     legalDocuments = [fallbackContent];
+    // Create fallback embedding
+    documentEmbeddings = [{
+        content: fallbackContent,
+        embedding: Array(1536).fill(0)
+    }];
 });
 
 // Function to perform RAG
 async function performRAG(query) {
     try {
+        console.log('Starting RAG process for query:', query);
+        
+        // Check if OpenAI API key is available
+        if (!process.env.OPENAI_API_KEY) {
+            console.error('OPENAI_API_KEY is not set. Cannot perform RAG without it.');
+            throw new Error('OpenAI API key is not configured');
+        }
+        
+        // Check if document embeddings are ready
+        if (!documentEmbeddings || documentEmbeddings.length === 0) {
+            console.error('Document embeddings are not ready yet. Using fallback content.');
+            return `I'm still loading the legal documents. Please try again in a moment.\n\n---\n\n**Disclaimer:** This information is AI-generated and may not be accurate or complete. We are not lawyers, and this should not be considered legal advice. For accurate legal guidance, please consult with a qualified legal professional.`;
+        }
+        
+        console.log('Creating query embedding...');
         // Create embedding for the query
         const queryEmbedding = await openai.embeddings.create({
             model: "text-embedding-3-small",
             input: query
         });
+        console.log('Query embedding created successfully');
 
         // Calculate cosine similarity using cached embeddings
+        console.log('Calculating similarities with', documentEmbeddings.length, 'documents');
         const similarities = documentEmbeddings.map((doc) => {
             const similarity = cosineSimilarity(
                 queryEmbedding.data[0].embedding,
@@ -182,8 +225,10 @@ async function performRAG(query) {
         // Sort by similarity and get top 3 most relevant documents
         similarities.sort((a, b) => b.similarity - a.similarity);
         const relevantDocs = similarities.slice(0, 3).map(doc => doc.content);
+        console.log('Found', relevantDocs.length, 'relevant documents');
 
         // Create the prompt for GPT-4 with formatting instructions
+        console.log('Creating prompt for OpenAI...');
         const prompt = `You are a legal assistant specializing in Nigerian Child's Rights Act. 
         Based on the following legal documents, please answer the question: "${query}"
         
@@ -204,20 +249,28 @@ async function performRAG(query) {
         Remember: Every piece of information must be backed by specific section references from the Act.`;
 
         // Get response from GPT-4
+        console.log('Sending request to OpenAI...');
         const completion = await openai.chat.completions.create({
             model: "gpt-4-turbo-preview",
             messages: [{ role: "user", content: prompt }],
             temperature: 0.7,
             max_tokens: 500
         });
+        console.log('Received response from OpenAI');
 
         // Add disclaimer to the response
         const response = completion.choices[0].message.content;
         const disclaimer = "\n\n---\n\n**Disclaimer:** This information is AI-generated and may not be accurate or complete. We are not lawyers, and this should not be considered legal advice. For accurate legal guidance, please consult with a qualified legal professional.";
         
+        console.log('RAG process completed successfully');
         return response + disclaimer;
     } catch (error) {
-        console.error('Error in RAG:', error);
+        console.error('Error in RAG process:', error);
+        console.error('Error details:', error.message);
+        if (error.response) {
+            console.error('OpenAI API Error response:', error.response.data);
+            console.error('OpenAI API Error status:', error.response.status);
+        }
         throw error;
     }
 }
@@ -271,10 +324,20 @@ app.post('/api/chat', async (req, res) => {
             console.log('No authentication token provided or Supabase not initialized, proceeding as anonymous');
         }
 
-        console.log('Processing chat request...');
-        const response = await performRAG(message);
-        console.log('Chat request processed successfully');
-        res.json({ response });
+        console.log('Processing chat request with message:', message);
+        
+        try {
+            const response = await performRAG(message);
+            console.log('Chat request processed successfully');
+            return res.json({ response });
+        } catch (ragError) {
+            console.error('Error in performRAG function:', ragError);
+            return res.status(500).json({ 
+                error: 'RAG processing error',
+                message: ragError.message,
+                details: process.env.NODE_ENV === 'development' ? ragError.stack : undefined
+            });
+        }
     } catch (error) {
         console.error('Error processing chat request:', error);
         // Check if it's an OpenAI API error
@@ -287,7 +350,8 @@ app.post('/api/chat', async (req, res) => {
         }
         res.status(500).json({ 
             error: 'Failed to process request',
-            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 });

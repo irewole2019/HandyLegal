@@ -272,7 +272,9 @@
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('Server error details:', errorData);
+                    throw new Error(`Server returned ${response.status}: ${errorData.error || errorData.message || response.statusText}`);
                 }
 
                 const data = await response.json();
@@ -282,7 +284,7 @@
                 addMessage(data.response, 'bot');
             } catch (error) {
                 console.error('Error:', error);
-                addMessage(`Sorry, I encountered an error: ${error.message}. Please try again.`, 'bot');
+                addMessage(`Sorry, I encountered an error: ${error.message}. Please try refreshing the page and trying again. If the problem persists, please check your OpenAI API key configuration.`, 'bot');
             }
         });
 
