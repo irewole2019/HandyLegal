@@ -19,7 +19,19 @@ const openai = new OpenAI({
 // Initialize Supabase client
 const supabaseUrl = process.env.SUPABASE_URL || 'https://lnqhdclsrralhuogdgtn.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_KEY; // Server-side service key should be kept private
-const supabase = createClient(supabaseUrl, supabaseKey);
+let supabase = null;
+
+// Only initialize Supabase if the key is available
+if (supabaseKey) {
+    try {
+        supabase = createClient(supabaseUrl, supabaseKey);
+        console.log('Supabase client initialized successfully');
+    } catch (error) {
+        console.error('Error initializing Supabase client:', error);
+    }
+} else {
+    console.warn('SUPABASE_SERVICE_KEY is not set. Authentication features will be disabled.');
+}
 
 // GitHub raw PDF URL - we'll update this once you push the PDF to GitHub
 const PDF_URL = 'https://raw.githubusercontent.com/irewole2019/HandyLegal/main/childs_right_act.pdf';
@@ -237,7 +249,7 @@ app.post('/api/chat', async (req, res) => {
 
         // Check for authentication token in headers
         const authHeader = req.headers.authorization;
-        if (authHeader && authHeader.startsWith('Bearer ')) {
+        if (authHeader && authHeader.startsWith('Bearer ') && supabase) {
             const token = authHeader.substring(7, authHeader.length);
             try {
                 // Verify the token with Supabase
@@ -256,7 +268,7 @@ app.post('/api/chat', async (req, res) => {
                 console.log('Proceeding with request despite authentication error');
             }
         } else {
-            console.log('No authentication token provided, proceeding as anonymous');
+            console.log('No authentication token provided or Supabase not initialized, proceeding as anonymous');
         }
 
         console.log('Processing chat request...');
