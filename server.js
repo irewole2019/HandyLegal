@@ -5,6 +5,7 @@ const OpenAI = require('openai');
 const path = require('path');
 const https = require('https');
 const pdfParse = require('pdf-parse');
+const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -15,6 +16,11 @@ const openai = new OpenAI({
     dangerouslyAllowBrowser: true
 });
 
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL || 'https://lnqhdclsrralhuogdgtn.supabase.co';
+const supabaseKey = process.env.SUPABASE_SERVICE_KEY; // Server-side service key should be kept private
+const supabase = createClient(supabaseUrl, supabaseKey);
+
 // GitHub raw PDF URL - we'll update this once you push the PDF to GitHub
 const PDF_URL = 'https://raw.githubusercontent.com/irewole2019/HandyLegal/main/childs_right_act.pdf';
 
@@ -22,7 +28,7 @@ const PDF_URL = 'https://raw.githubusercontent.com/irewole2019/HandyLegal/main/c
 app.use(cors({
     origin: '*', // Allow requests from any origin
     methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type']
+    allowedHeaders: ['Content-Type', 'Authorization'] // Make sure Authorization header is allowed
 }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname)));
@@ -177,11 +183,13 @@ async function performRAG(query) {
         
         1. Start with a brief, direct answer to the question
         2. Then provide relevant details in bullet points or numbered lists
-        3. Include specific references to the Child's Rights Act where applicable
-        4. Use clear headings and sections to organize the information
-        5. End with any important notes or warnings if relevant
+        3. For EVERY point or detail, you MUST include the specific section number(s) from the Child's Rights Act that support it
+        4. Format section references as "Section X" or "Sections X and Y" where X and Y are the section numbers
+        5. Use clear headings and sections to organize the information
+        6. End with any important notes or warnings if relevant
         
-        Keep the response concise but comprehensive. Use proper spacing and formatting to make it easy to read.`;
+        Keep the response concise but comprehensive. Use proper spacing and formatting to make it easy to read.
+        Remember: Every piece of information must be backed by specific section references from the Act.`;
 
         // Get response from GPT-4
         const completion = await openai.chat.completions.create({
@@ -225,6 +233,30 @@ app.post('/api/chat', async (req, res) => {
                 error: 'OpenAI API key is not configured',
                 details: 'Please check your environment variables'
             });
+        }
+
+        // Check for authentication token in headers
+        const authHeader = req.headers.authorization;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.substring(7, authHeader.length);
+            try {
+                // Verify the token with Supabase
+                const { data, error } = await supabase.auth.getUser(token);
+                
+                if (error) {
+                    console.error('Authentication error:', error.message);
+                    // Continue anyway for now, to avoid blocking chat functionality
+                    console.log('Proceeding with request despite authentication error');
+                } else if (data && data.user) {
+                    console.log('Authenticated user:', data.user.email);
+                }
+            } catch (authError) {
+                console.error('Error verifying token:', authError);
+                // Continue anyway for now, to avoid blocking chat functionality
+                console.log('Proceeding with request despite authentication error');
+            }
+        } else {
+            console.log('No authentication token provided, proceeding as anonymous');
         }
 
         console.log('Processing chat request...');

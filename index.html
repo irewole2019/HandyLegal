@@ -17,6 +17,8 @@
                 <div class="hidden md:flex items-center space-x-4">
                     <a href="#features" class="hover:text-green-200">Features</a>
                     <a href="#how-it-works" class="hover:text-green-200">How It Works</a>
+                    <button onclick="toggleModal('login-modal')" class="hover:text-green-200">Login</button>
+                    <button onclick="toggleModal('signup-modal')" class="bg-white text-green-700 px-4 py-2 rounded-md hover:bg-green-100">Sign Up</button>
                     <a href="chat.html" class="bg-white text-green-700 px-4 py-2 rounded-md hover:bg-green-100">Start Now</a>
                 </div>
             </div>
@@ -147,5 +149,195 @@
             </div>
         </div>
     </footer>
+
+    <!-- Auth Modals -->
+    <div id="signup-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Create an Account</h2>
+                <button type="button" class="text-gray-400 hover:text-gray-500" onclick="toggleModal('signup-modal')">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="signup-form" class="space-y-4">
+                <div>
+                    <label for="signup-email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="signup-email" placeholder="you@example.com" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                </div>
+                <div>
+                    <label for="signup-password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="signup-password" placeholder="••••••••" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                </div>
+                <div>
+                    <button type="submit" 
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Sign Up
+                    </button>
+                </div>
+                <div class="text-center text-sm">
+                    <button type="button" class="text-green-600 hover:text-green-500" 
+                            onclick="toggleModal('signup-modal'); toggleModal('login-modal')">
+                        Already have an account? Log in
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="login-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md mx-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-gray-800">Log In to Your Account</h2>
+                <button type="button" class="text-gray-400 hover:text-gray-500" onclick="toggleModal('login-modal')">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="login-email" class="block text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="login-email" placeholder="you@example.com" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                </div>
+                <div>
+                    <label for="login-password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required
+                           class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                </div>
+                <div>
+                    <button type="submit" 
+                            class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                        Log In
+                    </button>
+                </div>
+                <div class="text-center text-sm">
+                    <button type="button" class="text-green-600 hover:text-green-500" 
+                            onclick="toggleModal('login-modal'); toggleModal('signup-modal')">
+                        Need an account? Sign up
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+      // Initialize Supabase client
+      const supabaseUrl = 'https://lnqhdclsrralhuogdgtn.supabase.co';
+      const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxucWhkY2xzcnJhbGh1b2dkZ3RuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQxNTY5MDYsImV4cCI6MjA1OTczMjkwNn0.PkMpxPauyaibyELXrK2jkppJjyUbyuJL2paY8KHBKSI';
+      
+      // Create Supabase client properly for v2
+      const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+      // Function to toggle modal visibility
+      function toggleModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal.classList.contains('hidden')) {
+          modal.classList.remove('hidden');
+        } else {
+          modal.classList.add('hidden');
+        }
+      }
+
+      // Add auth buttons to navigation
+      document.addEventListener('DOMContentLoaded', async function() {
+        try {
+          // Check if user is already logged in
+          const { data: { user }, error } = await supabaseClient.auth.getUser();
+          
+          if (user) {
+            // User is logged in, show logout button and hide login/signup
+            const loginBtn = document.querySelector('button[onclick="toggleModal(\'login-modal\')"]');
+            const signupBtn = document.querySelector('button[onclick="toggleModal(\'signup-modal\')"]');
+            
+            if (loginBtn) loginBtn.classList.add('hidden');
+            if (signupBtn) signupBtn.classList.add('hidden');
+            
+            // Add logout button
+            const navItems = document.querySelector('.hidden.md\\:flex.items-center.space-x-4');
+            if (navItems) {
+              const logoutBtn = document.createElement('button');
+              logoutBtn.className = 'hover:text-green-200';
+              logoutBtn.textContent = 'Logout';
+              logoutBtn.onclick = handleLogout;
+              navItems.appendChild(logoutBtn);
+            }
+          }
+        } catch (err) {
+          console.error('Error checking authentication:', err);
+        }
+      });
+
+      // Sign up handler
+      document.getElementById('signup-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('signup-email').value;
+        const password = document.getElementById('signup-password').value;
+        
+        try {
+          const { data, error } = await supabaseClient.auth.signUp({
+            email: email,
+            password: password
+          });
+
+          if (error) {
+            alert('Error signing up: ' + error.message);
+          } else {
+            alert('Sign up successful! Please check your email for verification.');
+            toggleModal('signup-modal');
+          }
+        } catch (err) {
+          console.error('Error signing up:', err);
+          alert('An unexpected error occurred. Please try again.');
+        }
+      });
+
+      // Login handler
+      document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        
+        try {
+          const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+          });
+
+          if (error) {
+            alert('Error logging in: ' + error.message);
+          } else {
+            alert('Login successful!');
+            toggleModal('login-modal');
+            // Redirect to chat page after login
+            window.location.href = 'chat.html';
+          }
+        } catch (err) {
+          console.error('Error logging in:', err);
+          alert('An unexpected error occurred. Please try again.');
+        }
+      });
+
+      // Logout handler
+      async function handleLogout() {
+        try {
+          const { error } = await supabaseClient.auth.signOut();
+          if (error) {
+            alert('Error signing out: ' + error.message);
+          } else {
+            alert('You have been logged out.');
+            window.location.reload(); // Reload page to update UI
+          }
+        } catch (err) {
+          console.error('Error signing out:', err);
+          alert('An unexpected error occurred. Please try again.');
+        }
+      }
+    </script>
 </body>
 </html> 
